@@ -7,7 +7,7 @@ import android.hardware.SensorManager;
 
 public class ShakeManager implements SensorEventListener {
 
-    private static final float GRAVITY_THRESHOLD = 3F;
+    private static final float GRAVITY_THRESHOLD = 2.8F;
     private static final int MIN_ELAPSED_TIME = 500;
 
     private ShakeListener mListener;
