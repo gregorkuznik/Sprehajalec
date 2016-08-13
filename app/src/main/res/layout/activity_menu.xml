@@ -1,0 +1,50 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    tools:context=".MenuActivity"
+    android:background="@color/bckg_color" >
+
+    <LinearLayout
+        android:id="@+id/menu_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical" >
+
+        <Button
+            android:id="@+id/favourite_button"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="@string/favourite_button"
+            android:onClick="onButtonClick"
+            android:layout_weight="1"
+            android:textSize="@dimen/normal_font_size"
+            android:textColor="@color/txt_color"
+            android:background="@drawable/button_custom_1" />
+        <Button
+            android:id="@+id/free_button"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="@string/free_button"
+            android:onClick="onButtonClick"
+            android:layout_weight="1"
+            android:textSize="@dimen/normal_font_size"
+            android:textColor="@color/txt_color_2"
+            android:background="@drawable/button_custom_2" />
+        <Button
+            android:id="@+id/settings_button"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="@string/settings_button"
+            android:onClick="onButtonClick"
+            android:layout_weight="1"
+            android:textSize="@dimen/normal_font_size"
+            android:textColor="@color/txt_color"
+            android:background="@drawable/button_custom_3" />
+        </LinearLayout>
+
+</RelativeLayout>

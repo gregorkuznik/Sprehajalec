@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Sprehajalec</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_menu">Meni</string>
+    <string name="favourite_button">NAJLJUBŠE POTI</string>
+    <string name="free_button">PROSTA ORIENTACIJA</string>
+    <string name="settings_button">ORODJA IN POMOČ</string>
+    <string name="title_activity_favourite">Najljubše poti</string>
+    <string name="favourite_edit_button">Uredi poti</string>
+    <string name="title_activity_free">Prosta orientacija</string>
+    <string name="title_activity_settings">Orodja</string>
+    <string name="title_activity_favourite_list">Seznam najljubših poti</string>
+    <string name="title_activity_favourite_edit">Urejanje najljubših poti</string>
+    <string name="current_street">Trenutna lokacija</string>
+    <string name="directions_list_title">Navodila za pot</string>
+
+    <dimen name="normal_font_size">46sp</dimen>
+    <dimen name="small_font_size">30sp</dimen>
+
+    <color name="bckg_color_4">#FFFFFF</color>
+    <color name="bckg_color_3">#F8981F</color>
+    <color name="bckg_color_2">#424242</color>
+    <color name="bckg_color">#E9E8E8</color>
+    <color name="btn_def_1">#F8981F</color>
+    <color name="btn_def_1_dark">#df7e07</color>
+    <color name="btn_def_2">#3099BB</color>
+    <color name="btn_def_2_dark">#2a84a2</color>
+    <color name="btn_def_3">#E9E8E8</color>
+    <color name="btn_def_3_dark">#c1bebe</color>
+    <color name="btn_def_4">#424242</color>
+    <color name="btn_pressed">#C3C3C3</color>
+    <color name="btn_focused">#ABABAB</color>
+    <color name="txt_color">#424242</color>
+    <color name="txt_color_2">#E9E8E8</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="light_grey">#E6E6E6</color>
+
+</resources>
