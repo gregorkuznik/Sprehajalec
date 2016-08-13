@@ -1,3 +1,5 @@
 # Sprehajalec
 
-Android project for a navigation app for visually impaired. In development...
+Navigation app for visually impaired.
+
+\*In development\*
