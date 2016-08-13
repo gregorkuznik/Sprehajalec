@@ -65,7 +65,9 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
     protected boolean navigationMode;
     private Road mRoad;
     private RoadNode mNextNode;
+    private int mDistance;
     private String mInstruction;
+    private int mDirection;
 
     // - OnCreate, OnResume, OnPause -
     @Override
@@ -88,7 +90,7 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
 
         Typeface tf = Typeface.createFromAsset(getAssets(), Constants.FONT_PATH);
         ((Button)findViewById(R.id.current_location_button)).setTypeface(tf);
-        ((Button)findViewById(R.id.current_direction_button)).setTypeface(tf);
+        ((Button)findViewById(R.id.current_instruction_button)).setTypeface(tf);
 
         // Setting volume control stream to media
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
@@ -208,7 +210,13 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
             }
             else if (mNextNode != null) {
                 GeoPoint currentGeoPoint = new GeoPoint(mCurrentLocation);
+
                 int distance = currentGeoPoint.distanceTo(mNextNode.mLocation);
+                int direction = mNextNode.mManeuverType;
+
+                // Set new instruction
+                setInstruction(distance, direction);
+
                 if ( distance < 1 ) {
                     // Node reached, get next node
                     //if (mRoad.mNodes.size() >= )
@@ -216,6 +224,33 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
                 }
             }
         }
+    }
+
+    /*
+
+NONE	0	No maneuver occurs here.
+STRAIGHT	1	Continue straight.
+BECOMES	2	No maneuver occurs here. Road name changes.
+SLIGHT_LEFT	3	Make a slight left.
+LEFT	4	Turn left.
+SHARP_LEFT	5	Make a sharp left.
+SLIGHT_RIGHT	6	Make a slight right.
+RIGHT	7	Turn right.
+SHARP_RIGHT	8	Make a sharp right.
+STAY_LEFT	9	Stay left.
+STAY_RIGHT	10	Stay right.
+STAY_STRAIGHT	11	Stay straight.
+UTURN	12	Make a U-turn.
+UTURN_LEFT	13	Make a left U-turn.
+UTURN_RIGHT	14	Make a right U-turn.
+     */
+
+    public void setInstruction (int distance, int direction) {
+        String instruction = "Čez " + distance + " metrov " + direction;
+
+        Button button = (Button)findViewById(R.id.current_instruction_button);
+        button.setText(instruction);
+        button.setVisibility(View.VISIBLE);
     }
 
     public GeoPoint getLocationFromAddress(String strAddress){
@@ -345,7 +380,7 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
 
                 RoadNode node = road.mNodes.get(0);
 
-                Button button = (Button)findViewById(R.id.current_direction_button);
+                Button button = (Button)findViewById(R.id.current_instruction_button);
                 String instructions = (node.mInstructions==null ? "" : node.mInstructions);
                 button.setText(instructions);
                 button.setVisibility(View.VISIBLE);
