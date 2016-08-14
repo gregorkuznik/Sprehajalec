@@ -28,7 +28,7 @@
         android:visibility="gone" >
 
         <Button
-            android:id="@+id/current_direction_button"
+            android:id="@+id/current_instruction_button"
             android:layout_width="fill_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
