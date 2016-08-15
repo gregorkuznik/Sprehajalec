@@ -1,5 +1,7 @@
 package com.kucode.oriound;
 
+import java.util.HashMap;
+
 public class Constants {
     public static final int SUCCESS_RESULT = 0;
     public static final int FAILURE_RESULT = 1;
