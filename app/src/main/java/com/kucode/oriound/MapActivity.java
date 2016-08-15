@@ -473,10 +473,14 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
             put("turn", "zavij");
             put("continue", "nadaljuj");
             put("stay", "ostani");
+            put("you have arrived at your destination", "prispeli ste na cilj");
+            put("unnamed road", "ulico");
         }};
 
-        String regex = "\\bgo\\b|\\bleft\\b|\\bright\\b|\\bstraight\\b|\\bon\\b|\\bturn\\b|\\bcontinue\\b|\\bstay\\b";
-        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+        String regex = "(?i)\\b(go|left|right|straight|on|turn|continue|stay|you have arrived at your destination|" +
+                "unnamed road)\\b";
+        //Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+        Pattern pattern = Pattern.compile(regex);
         StringBuffer stringBuffer;
         Matcher matcher;
 
@@ -484,9 +488,13 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
             String instructions = node.mInstructions;
             stringBuffer = new StringBuffer();
             matcher = pattern.matcher(instructions);
+            String group = "";
 
-            while (matcher.find())
-                matcher.appendReplacement(stringBuffer, translations.get(matcher.group()));
+            while (matcher.find()) {
+                group = matcher.group();
+                String translation = translations.get(group.toLowerCase());
+                matcher.appendReplacement(stringBuffer, translation);
+            }
             matcher.appendTail(stringBuffer);
 
             node.mInstructions = stringBuffer.toString();
