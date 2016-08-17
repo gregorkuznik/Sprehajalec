@@ -97,7 +97,6 @@ public class SplashScreenActivity extends ActionBarActivity {
     class InsertUserAsync extends AsyncTask<String, Integer, String> {
 
         public InsertUserAsync() {
-            // TODO Auto-generated constructor stub
         }
 
         @Override

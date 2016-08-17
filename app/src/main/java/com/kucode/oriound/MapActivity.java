@@ -1,5 +1,6 @@
 package com.kucode.oriound;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
@@ -27,6 +28,10 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
 import org.osmdroid.api.IMapController;
+import org.osmdroid.bonuspack.location.NominatimPOIProvider;
+import org.osmdroid.bonuspack.location.OverpassAPIProvider;
+import org.osmdroid.bonuspack.location.POI;
+import org.osmdroid.bonuspack.overlays.FolderOverlay;
 import org.osmdroid.bonuspack.overlays.Marker;
 import org.osmdroid.bonuspack.overlays.Polyline;
 import org.osmdroid.bonuspack.routing.MapQuestRoadManager;
@@ -34,6 +39,7 @@ import org.osmdroid.bonuspack.routing.Road;
 import org.osmdroid.bonuspack.routing.RoadManager;
 import org.osmdroid.bonuspack.routing.RoadNode;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.BoundingBoxE6;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.util.NetworkLocationIgnorer;
 import org.osmdroid.views.MapView;
@@ -68,11 +74,10 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
     protected boolean mNavigationRunning = false;
     protected boolean mNavigationMode;
     private Road mRoad;
+    private RoadNode mCurrentNode;
     private RoadNode mNextNode;
     private int mNodeIndex;
-    private int mDistance;
-    private String mInstruction;
-    private int mDirection;
+    private long mLastTime = 0;
 
     // - OnCreate, OnResume, OnPause -
     @Override
@@ -89,6 +94,10 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
             mNavigationMode = true;
             destinationAddress = inDestinationAddress;
 
+            // Hiding favourite paths button
+            Button button = (Button)findViewById(R.id.favourite_paths_button);
+            button.setVisibility(View.GONE);
+
             // Setting progress bar to active until route is found
             progressBarWrapper.setVisibility(View.VISIBLE);
         }
@@ -96,6 +105,8 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
         Typeface tf = Typeface.createFromAsset(getAssets(), Constants.FONT_PATH);
         ((Button)findViewById(R.id.current_location_button)).setTypeface(tf);
         ((Button)findViewById(R.id.current_instruction_button)).setTypeface(tf);
+        ((Button)findViewById(R.id.bus_poi_button)).setTypeface(tf);
+        ((Button)findViewById(R.id.favourite_paths_button)).setTypeface(tf);
 
         // Setting volume control stream to media
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
@@ -134,6 +145,7 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
         map = (MapView) this.findViewById(R.id.map);
         //map.setBuiltInZoomControls(true);
         map.setMultiTouchControls(true);
+        map.setMinZoomLevel(16);
         // Tiles for the map, can be changed
         map.setTileSource(TileSourceFactory.MAPNIK);
 
@@ -172,8 +184,12 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
 
     // - Location changed listener -
     private final NetworkLocationIgnorer networkLocationIgnorer = new NetworkLocationIgnorer();
-    long mLastTime = 0; // milliseconds
     @Override public void onLocationChanged(Location location) {
+        // Animate to first location change
+        if (mCurrentLocation == null) {
+            map.getController().animateTo(new GeoPoint(location));
+        }
+
         mCurrentLocation = location;
 
         long currentTime = System.currentTimeMillis();
@@ -182,22 +198,19 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
             return;
 
         double dT = currentTime - mLastTime;
-        if (dT < 100.0){
+        if (dT < 200.0){
             return;
         };
 
         mLastTime = currentTime;
 
         if (!currentLocationOverlay.isEnabled()){
-            // Location for the first time -> enable current location overlay
             currentLocationOverlay.setEnabled(true);
         }
 
-        map.getController().animateTo(new GeoPoint(location));
         currentLocationOverlay.setLocation(new GeoPoint(location));
         currentLocationOverlay.setBearing(location.getBearing());
         currentLocationOverlay.setAccuracy((int) location.getAccuracy());
-        map.invalidate();
 
         // Navigation mode
         if (mNavigationMode) {
@@ -215,66 +228,91 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
             }
             else if (mNextNode != null) {
                 GeoPoint currentGeoPoint = new GeoPoint(mCurrentLocation);
-
                 int distance = currentGeoPoint.distanceTo(mNextNode.mLocation);
-                int direction = mNextNode.mManeuverType;
+                boolean readInstructions = false;
 
                 // TODO: Test which distance is good for marking node as reached
-                if ( distance < 2 ) {
+                // TODO: Preveri kako zaznati ali je šel čez node
+                // TODO: Povej navodila tik preden zavije
+                if ( distance < 4 ) {
+                    map.getController().animateTo(new GeoPoint(location));
+
                     // Node reached, increase node index
                     mNodeIndex++;
+
                     if (mNodeIndex >= mRoad.mNodes.size()) {
                         // Last node reached - turn navigation off
                         mNavigationMode = false;
                         mNavigationRunning = false;
                         mNextNode = null;
+                        mCurrentNode = null;
                         mNodeIndex = 0;
 
                         Button button = (Button)findViewById(R.id.current_instruction_button);
                         button.setVisibility(View.GONE);
 
-                        // TODO: Tell user that he reached end location
+                        Button buttonFavPaths = (Button)findViewById(R.id.favourite_paths_button);
+                        buttonFavPaths.setVisibility(View.VISIBLE);
                     }
                     else {
                         // Get next node
+                        mCurrentNode = mNextNode;
                         mNextNode = mRoad.mNodes.get(mNodeIndex);
 
-                        distance = currentGeoPoint.distanceTo(mNextNode.mLocation);
-                        direction = mNextNode.mManeuverType;
+                        readInstructions = true;
                     }
+                }
+                else if (distance < 6) {
+                    readInstructions = true;
                 }
 
                 // Set new instruction
-                setInstruction(distance, direction);
+                setInstruction(readInstructions);
             }
+        }
+
+        map.invalidate();
+    }
+
+    // - Navigation instructions -
+    public void setInstruction (boolean readInstructions) {
+        Button button = (Button)findViewById(R.id.current_instruction_button);
+
+        GeoPoint currentGeoPoint = new GeoPoint(mCurrentLocation);
+        int distance = currentGeoPoint.distanceTo(mNextNode.mLocation);
+
+        if (mNodeIndex >= mRoad.mNodes.size()) {
+            readInstructions("Prispeli ste na cilj");
+        }
+        else  {
+            String instruction = "";
+
+            if (mNodeIndex == mRoad.mNodes.size() - 1) {
+                instruction = "Nadaljuj " + distance + " metrov do cilja";
+            }
+            else if (mNodeIndex == 1) {
+                instruction = mCurrentNode.mInstructions + ", nato čez " + distance + " metrov ";
+                instruction += mNextNode.mInstructions;
+            }
+            else {
+                instruction = "Nadaljuj " + distance + " metrov, nato ";
+                instruction += mNextNode.mInstructions;
+            }
+
+            if (readInstructions) {
+                readInstructions(instruction);
+            }
+
+            button.setText(instruction);
+            if (button.getVisibility() == View.GONE)
+                button.setVisibility(View.VISIBLE);
         }
     }
 
-    /*
-    NONE	0	No maneuver occurs here.
-    STRAIGHT	1	Continue straight.
-    BECOMES	2	No maneuver occurs here. Road name changes.
-    SLIGHT_LEFT	3	Make a slight left.
-    LEFT	4	Turn left.
-    SHARP_LEFT	5	Make a sharp left.
-    SLIGHT_RIGHT	6	Make a slight right.
-    RIGHT	7	Turn right.
-    SHARP_RIGHT	8	Make a sharp right.
-    STAY_LEFT	9	Stay left.
-    STAY_RIGHT	10	Stay right.
-    STAY_STRAIGHT	11	Stay straight.
-    UTURN	12	Make a U-turn.
-    UTURN_LEFT	13	Make a left U-turn.
-    UTURN_RIGHT	14	Make a right U-turn.
-     */
-
-    public void setInstruction (int distance, int direction) {
-        String instruction = "Čez " + distance + " metrov " + direction;
-
-        Button button = (Button)findViewById(R.id.current_instruction_button);
-        button.setText(instruction);
-        if (button.getVisibility() == View.GONE)
-            button.setVisibility(View.VISIBLE);
+    public void readInstructions(String instructions) {
+        Intent serviceIntent = new Intent(getBaseContext(), TTSService.class);
+        serviceIntent.putExtra("text", instructions);
+        startService(serviceIntent);
     }
 
     public GeoPoint getLocationFromAddress(String strAddress){
@@ -351,25 +389,21 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
 
         protected void onPostExecute(Road result) {
             mRoad = result;
-            mNodeIndex = 0;
-            mNextNode = result.mNodes.get(mNodeIndex);
+            mNodeIndex = 1;
+            mCurrentNode = result.mNodes.get(0);
+            mNextNode = result.mNodes.get(1);
 
             // Translating instructions
             translateInstructions();
-
-            // Setting first instruction
-            GeoPoint currentGeoPoint = new GeoPoint(mCurrentLocation);
-
-            int distance = currentGeoPoint.distanceTo(mNextNode.mLocation);
-            int direction = mNextNode.mManeuverType;
-
-            setInstruction(distance, direction);
 
             // Drawing road and points on map
             showRoadOnMap(result);
 
             // Hiding progress bar
             progressBarWrapper.setVisibility(View.GONE);
+
+            // Setting first instruction
+            setInstruction(true);
         }
     }
 
@@ -386,100 +420,115 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
                 for (RoadNode node : road.mNodes) {
                     Marker nodeMarker = new Marker(map);
                     nodeMarker.setPosition(node.mLocation);
-                    nodeMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-                    nodeMarker.setIcon(getResources().getDrawable(R.drawable.ic_node_2));
+                    nodeMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                    nodeMarker.setIcon(getResources().getDrawable(R.drawable.ic_node_4));
                     nodeMarker.setInfoWindow(null);
                     map.getOverlays().add(nodeMarker);
                 }
 
-                // Placing current location overlay over POI's
+                // Placing current location overlay on top
                 //map.getOverlays().remove(currentLocationOverlay);
                 //map.getOverlays().add(currentLocationOverlay);
+                map.getController().animateTo(new GeoPoint(mCurrentLocation));
 
                 map.invalidate();
             }
         }
     }
 
-    public Boolean checkInternetConnection(Context con){
-        ConnectivityManager connectivityManager= null;
-        NetworkInfo wifiInfo, mobileInfo;
+    // - POIs -
+    private class POIsTask extends AsyncTask<Object, Void, ArrayList<POI>> {
 
-        try{
-            connectivityManager = (ConnectivityManager) con.getSystemService(Context.CONNECTIVITY_SERVICE);
-            wifiInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-            mobileInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+        protected ArrayList<POI> doInBackground(Object... params) {
+            String keyword = (String)params[0];
+            int maxResults = (int)params[1];
+            double maxDistance = (double)params[2];
 
-            if(wifiInfo.isConnected() || mobileInfo.isConnected())
-            {
-                return true;
+            GeoPoint currentGeoPoint = new GeoPoint(mCurrentLocation);
+
+            int maxDistanceE6 = (int)(maxDistance * 1000000.0D);
+            BoundingBoxE6 boundingBox = new BoundingBoxE6(currentGeoPoint.getLatitudeE6() + maxDistanceE6,
+                    currentGeoPoint.getLongitudeE6() + maxDistanceE6,
+                    currentGeoPoint.getLatitudeE6() - maxDistanceE6,
+                    currentGeoPoint.getLongitudeE6() - maxDistanceE6);
+
+            OverpassAPIProvider overpassAPIProvider = new OverpassAPIProvider();
+            //NominatimPOIProvider nominatimPOIProvider = new NominatimPOIProvider("Sprehajalec/1.0");
+
+            if(checkInternetConnection(getBaseContext())) {
+                try {
+                    //ArrayList<POI> pois = nominatimPOIProvider.getPOICloseTo(currentGeoPoint, keyword, maxResults, maxDistance);
+                    String overpassPOIUrl = overpassAPIProvider.urlForPOISearch(keyword, boundingBox, maxResults, 10);
+                    ArrayList<POI> pois = overpassAPIProvider.getPOIsFromUrl(overpassPOIUrl);
+                    return pois;
+                }
+                catch (Exception e) {
+                    Log.e(TAG, e.getMessage());
+                    return null;
+                }
+            }
+            else {
+                Log.e(TAG,"No connection");
+                return null;
             }
         }
-        catch(Exception e){
-            Log.e(TAG, e.getMessage());
-        }
 
-        return false;
+        protected void onPostExecute(ArrayList<POI> result) {
+            showPOIsOnMap(result);
+        }
     }
 
-    /*Continue straight.
-    BECOMES	2	No maneuver occurs here. Road name changes.
-            SLIGHT_LEFT	3	Make a slight left.
-    LEFT	4	Turn left.
-    SHARP_LEFT	5	Make a sharp left.
-    SLIGHT_RIGHT	6	Make a slight right.
-    RIGHT	7	Turn right.
-    SHARP_RIGHT	8	Make a sharp right.
-    STAY_LEFT	9	Stay left.
-    STAY_RIGHT	10	Stay right.
-    STAY_STRAIGHT	11	Stay straight.
-    UTURN	12	Make a U-turn.
-            UTURN_LEFT	13	Make a left U-turn.
-            UTURN_RIGHT	14	Make a right U-turn.
-            EXIT_LEFT	15	Exit left.
-    EXIT_RIGHT	16	Exit right.
-    RAMP_LEFT	17	Take the ramp on the left.
-    RAMP_RIGHT	18	Take the ramp on the right.
-    RAMP_STRAIGHT	19	Take the ramp straight ahead.
-            MERGE_LEFT	20	Merge left.
-    MERGE_RIGHT	21	Merge right.
-    MERGE_STRAIGHT	22	Merge.
-            ENTERING	23	Enter state/province.
-            DESTINATION	24	Arrive at your destination.
-    DESTINATION_LEFT	25	Arrive at your destination on the left.
-            DESTINATION_RIGHT	26	Arrive at your destination on the right.
-            ROUNDABOUT1	27	Enter the roundabout and take the 1st exit.
-    ROUNDABOUT2	28	Enter the roundabout and take the 2nd exit.
-    ROUNDABOUT3	29	Enter the roundabout and take the 3rd exit.
-    ROUNDABOUT4	30	Enter the roundabout and take the 4th exit.
-    ROUNDABOUT5	31	Enter the roundabout and take the 5th exit.
-    ROUNDABOUT6	32	Enter the roundabout and take the 6th exit.
-    ROUNDABOUT7	33	Enter the roundabout and take the 7th exit.
-    ROUNDABOUT8	34	Enter the roundabout and take the 8th exit.
-    TRANSIT_TAKE	35	Take a public transit bus or rail line.
-            TRANSIT_TRANSFER	36	Transfer to a public transit bus or rail line.
-            TRANSIT_ENTER	37	Enter a public transit bus or rail station
-    TRANSIT_EXIT	38	Exit a public transit bus or rail station
-    TRANSIT_REMAIN_ON	39	Remain on the current bus/rail car*/
+    public void showPOIsOnMap (ArrayList<POI> pois) {
+        if (pois == null){
+            Log.e(TAG, "POIs are null");
+        }
+        else {
+            FolderOverlay poiMarkers = new FolderOverlay(this);
+            map.getOverlays().add(poiMarkers);
 
-    // Text translate instructions
+            for (POI poi : pois) {
+                Marker poiMarker = new Marker(map);
+                poiMarker.setPosition(poi.mLocation);
+                poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                poiMarker.setIcon(getResources().getDrawable(R.drawable.ic_bus_poi_1));
+                poiMarker.setInfoWindow(null);
+                poiMarkers.add(poiMarker);
+            }
+
+            map.getController().animateTo(new GeoPoint(mCurrentLocation));
+            map.invalidate();
+
+            Intent serviceIntent = new Intent(getBaseContext(), TTSService.class);
+            serviceIntent.putExtra("text", "V bližini je " + pois.size() + " avtobusnih postaj");
+            startService(serviceIntent);
+        }
+    }
+
+    // - Text translate for instructions -
     private void translateInstructions() {
         Map<String, String> translations = new HashMap<String, String>() {{
             put("go", "pojdi");
             put("left", "levo");
             put("right", "desno");
             put("straight", "naravnost");
+            put(" on unnamed road", "");
             put("on", "na");
             put("turn", "zavij");
             put("continue", "nadaljuj");
             put("stay", "ostani");
-            put("you have arrived at your destination", "prispeli ste na cilj");
-            put("unnamed road", "ulico");
+            put("north", "severno");
+            put("east", "vzhodno");
+            put("south", "južno");
+            put("west", "zahodno");
+            put("northeast", "severnovzhodno");
+            put("southeast", "jugovzhodno");
+            put("southwest", "jugozahodno");
+            put("northwest", "servernozahodno");
         }};
 
-        String regex = "(?i)\\b(go|left|right|straight|on|turn|continue|stay|you have arrived at your destination|" +
-                "unnamed road)\\b";
-        //Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+        String regex = "(?i)\\b(go|left|right|straight| on unnamed road|on|turn|continue|stay|" +
+                "north|east|south|west|northeast|southeast|southwest|northwest)\\b";
+
         Pattern pattern = Pattern.compile(regex);
         StringBuffer stringBuffer;
         Matcher matcher;
@@ -488,24 +537,17 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
             String instructions = node.mInstructions;
             stringBuffer = new StringBuffer();
             matcher = pattern.matcher(instructions);
-            String group = "";
 
             while (matcher.find()) {
-                group = matcher.group();
-                String translation = translations.get(group.toLowerCase());
-                matcher.appendReplacement(stringBuffer, translation);
+                matcher.appendReplacement(stringBuffer, translations.get(matcher.group().toLowerCase()));
             }
             matcher.appendTail(stringBuffer);
 
             node.mInstructions = stringBuffer.toString();
-            /*instructions = instructions.replaceAll("\\bleft\\b", "levo");
-            instructions = instructions.replaceAll("\\bright\\b", "desno");
-            instructions = instructions.replaceAll("\\bon\\b", "na");
-            instructions = instructions.replaceAll("\\bturn\\b", "zavij");*/
         }
     }
 
-    // Text transform for TTS
+    // - Text transform for TTS -
     private String transformText(String text) {
         // TODO: Transform text for tts
         StringBuilder sb = new StringBuilder();
@@ -533,15 +575,36 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
         return sb.toString();
     }
 
-    // OTHER
+    // -- OTHER --
+    public Boolean checkInternetConnection(Context con){
+        ConnectivityManager connectivityManager= null;
+        NetworkInfo wifiInfo, mobileInfo;
+
+        try{
+            connectivityManager = (ConnectivityManager) con.getSystemService(Context.CONNECTIVITY_SERVICE);
+            wifiInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+            mobileInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+
+            if(wifiInfo.isConnected() || mobileInfo.isConnected())
+            {
+                return true;
+            }
+        }
+        catch(Exception e){
+            Log.e(TAG, e.getMessage());
+        }
+
+        return false;
+    }
+
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 
-    // ADDRESS FETCH
-    // Starting FetchAddressIntentService
+    // -- ADDRESS FETCH --
+    // - Starting FetchAddressIntentService -
     protected void startFetchAddressIS() {
         Intent intent = new Intent(this, FetchAddressIntentService.class);
         addressResultReceiver = new AddressResultReceiver(new Handler());
@@ -550,7 +613,8 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
         startService(intent);
     }
 
-    // Address receiver for FetchAddressIntentService
+    // - Address receiver for FetchAddressIntentService -
+    @SuppressLint("ParcelCreator")
     class AddressResultReceiver extends ResultReceiver {
         public AddressResultReceiver(Handler handler) {
             super(handler);
@@ -571,8 +635,9 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
         }
     }
 
-    // TRENUTNA LOKACIJA
-    public void onCurrentStreetClick(View view) {
+    // -- BUTTONS ON CLICK EVENTS --
+    // - Trenutna lokacija -
+    public void onCurrentStreetClick (View view) {
         buttonsWrapper.setVisibility(View.GONE);
         if(mCurrentLocation !=null && !fetchAddressRunning) {
             fetchAddressRunning = true;
@@ -581,10 +646,31 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
     }
 
     // - Trenutno navodilo za pot -
-    public void onDirectionClick(View view) {
+    public void onDirectionClick (View view) {
         buttonsWrapper.setVisibility(View.GONE);
         Intent serviceIntent = new Intent(getBaseContext(), TTSService.class);
         serviceIntent.putExtra("text", ((Button)view).getText());
         startService(serviceIntent);
+    }
+
+    // - POI avtobus -
+    public void onBusPOIClick (View view) {
+        buttonsWrapper.setVisibility(View.GONE);
+        Intent serviceIntent = new Intent(getBaseContext(), TTSService.class);
+        serviceIntent.putExtra("text", "Iščem");
+        startService(serviceIntent);
+        new POIsTask().execute("highway=bus_stop", 50, 0.005);
+        //new POIsTask().execute("bus stop", 4, 0.01);
+    }
+
+    // - Favourite paths -
+    public void onFavouritePathsClick (View view) {
+        buttonsWrapper.setVisibility(View.GONE);
+        Intent intent = new Intent(this, FavouriteListActivity.class);
+        startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+
+        finish();
+        return;
     }
 }

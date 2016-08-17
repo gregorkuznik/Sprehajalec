@@ -8,16 +8,17 @@
     <string name="free_button">PROSTA ORIENTACIJA</string>
     <string name="settings_button">ORODJA IN POMOČ</string>
     <string name="title_activity_favourite">Najljubše poti</string>
-    <string name="favourite_edit_button">Uredi poti</string>
     <string name="title_activity_free">Prosta orientacija</string>
     <string name="title_activity_settings">Orodja</string>
     <string name="title_activity_favourite_list">Seznam najljubših poti</string>
     <string name="title_activity_favourite_edit">Urejanje najljubših poti</string>
-    <string name="current_street">Trenutna lokacija</string>
-    <string name="directions_list_title">Navodila za pot</string>
+    <string name="btn_current_street">Trenutna lokacija</string>
+    <string name="btn_bus_poi">Bližnje avtobusne postaje</string>
+    <string name="btn_favourite_paths">Najljubše poti</string>
 
     <dimen name="normal_font_size">46sp</dimen>
     <dimen name="small_font_size">30sp</dimen>
+    <dimen name="smaller_font_size">22sp</dimen>
 
     <color name="bckg_color_4">#FFFFFF</color>
     <color name="bckg_color_3">#F8981F</color>

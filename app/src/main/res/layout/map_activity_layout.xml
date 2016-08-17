@@ -24,9 +24,32 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:orientation="vertical"
-        android:weightSum="4"
+        android:weightSum="3"
         android:visibility="gone" >
-
+        <Button
+            android:id="@+id/current_location_button"
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:text="@string/btn_current_street"
+            android:layout_alignParentTop="true"
+            android:onClick="onCurrentStreetClick"
+            android:background="@drawable/button_custom_1"
+            android:textSize="@dimen/small_font_size"
+            android:textColor="@color/txt_color"
+            android:alpha="0.8" />
+        <Button
+            android:id="@+id/bus_poi_button"
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:text="@string/btn_bus_poi"
+            android:layout_alignParentTop="true"
+            android:onClick="onBusPOIClick"
+            android:background="@drawable/button_custom_2"
+            android:textSize="@dimen/small_font_size"
+            android:textColor="@color/txt_color_2"
+            android:alpha="0.8" />
         <Button
             android:id="@+id/current_instruction_button"
             android:layout_width="fill_parent"
@@ -34,24 +57,23 @@
             android:layout_weight="1"
             android:layout_alignParentTop="true"
             android:onClick="onDirectionClick"
-            android:background="@drawable/button_custom_2"
+            android:background="@drawable/button_custom_3"
             android:textSize="@dimen/small_font_size"
-            android:textColor="@color/txt_color_2"
-            android:alpha="1"
+            android:textColor="@color/txt_color"
+            android:alpha="0.8"
             android:visibility="gone" />
         <Button
-            android:id="@+id/current_location_button"
+            android:id="@+id/favourite_paths_button"
             android:layout_width="fill_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:text="@string/current_street"
+            android:text="@string/btn_favourite_paths"
             android:layout_alignParentTop="true"
-            android:onClick="onCurrentStreetClick"
-            android:background="@drawable/button_custom_1"
+            android:onClick="onFavouritePathsClick"
+            android:background="@drawable/button_custom_3"
             android:textSize="@dimen/small_font_size"
             android:textColor="@color/txt_color"
-            android:alpha="1" />
-
+            android:alpha="0.8" />
         </LinearLayout>
 
     <RelativeLayout

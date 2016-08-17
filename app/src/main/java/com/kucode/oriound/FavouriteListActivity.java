@@ -64,7 +64,6 @@ public class FavouriteListActivity extends ActionBarActivity {
     private class MyAsyncTask extends AsyncTask<String, Void, String> {
 
         public MyAsyncTask() {
-            // TODO Auto-generated constructor stub
         }
 
         @Override
