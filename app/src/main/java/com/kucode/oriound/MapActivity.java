@@ -547,34 +547,6 @@ public class MapActivity extends ActionBarActivity implements SensorEventListene
         }
     }
 
-    // - Text transform for TTS -
-    private String transformText(String text) {
-        // TODO: Transform text for tts
-        StringBuilder sb = new StringBuilder();
-        text = text.toLowerCase();
-        for(int i =0; i<text.length(); i++) {
-            char c = text.charAt(i);
-            switch (c) {
-                case 'c' :
-                    sb.append("ts");
-                    break;
-                case 'č' :
-                    sb.append("ch");
-                    break;
-                case 'š' :
-                    sb.append("sh");
-                    break;
-                case 'ž' :
-                    sb.append(c);
-                    break;
-                default:
-                    sb.append(c);
-                    break;
-            }
-        }
-        return sb.toString();
-    }
-
     // -- OTHER --
     public Boolean checkInternetConnection(Context con){
         ConnectivityManager connectivityManager= null;

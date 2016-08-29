@@ -10,12 +10,14 @@ import java.util.Locale;
 
 public class TTSService extends Service implements TextToSpeech.OnInitListener{
 
-    private TextToSpeech tts;
+    private TextToSpeech textToSpeech;
     private String text;
+    private boolean languageSlovene;
 
     @Override
     public void onCreate() {
-        tts = new TextToSpeech(this, this);
+        textToSpeech = new TextToSpeech(this, this);
+        languageSlovene = false;
         super.onCreate();
     }
 
@@ -27,12 +29,15 @@ public class TTSService extends Service implements TextToSpeech.OnInitListener{
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            int result = tts.setLanguage(Locale.ENGLISH);
-            if (result == TextToSpeech.LANG_MISSING_DATA ||
-                    result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e("TTSService", "Language is not available.");
+            int result = textToSpeech.setLanguage(new Locale("sl_SI"));
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                result = textToSpeech.setLanguage(Locale.ENGLISH);
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    Log.e("TTSService", "Languages not available.");
+                }
             }
             else {
+                languageSlovene = true;
             }
         } else {
             Log.e("TTSService", "Could not initialize TextToSpeech.");
@@ -43,9 +48,9 @@ public class TTSService extends Service implements TextToSpeech.OnInitListener{
     @Override
     public void onDestroy() {
         // TODO Auto-generated method stub
-        if (tts != null) {
-            tts.stop();
-            tts.shutdown();
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
         }
         super.onDestroy();
     }
@@ -62,7 +67,41 @@ public class TTSService extends Service implements TextToSpeech.OnInitListener{
         }
     }
 
+    // - Text transform for TTS -
+    private String transformText(String text) {
+        // TODO: Transform text for tts
+        StringBuilder sb = new StringBuilder();
+        text = text.toLowerCase();
+        for(int i =0; i<text.length(); i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case 'c' :
+                    sb.append("ts");
+                    break;
+                case 'č' :
+                    sb.append("ch");
+                    break;
+                case 'š' :
+                    sb.append("sh");
+                    break;
+                case 'j' :
+                    sb.append("y");
+                    break;
+                case 'ž' :
+                    sb.append(c);
+                    break;
+                default:
+                    sb.append(c);
+                    break;
+            }
+        }
+        return sb.toString();
+    }
+
     private void speakOut() {
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+        if (!languageSlovene) {
+            text = transformText(text);
+        }
+        textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null);
     }
 }

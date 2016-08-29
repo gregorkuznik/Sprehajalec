@@ -35,7 +35,6 @@ public class ShakeManager implements SensorEventListener {
             float gY = y / SensorManager.GRAVITY_EARTH;
             float gZ = z / SensorManager.GRAVITY_EARTH;
 
-            // Gravity force is near 1 when no movement
             float gravityForce = (float)Math.sqrt(gX * gX + gY * gY + gZ * gZ);
 
             if (gravityForce > GRAVITY_THRESHOLD) {
